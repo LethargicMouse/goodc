@@ -1,0 +1,141 @@
+fn println<s: display>(s)
+  do stdout.wprintln(s);
+
+let stdout: file = file { fd: 1 };
+
+fn wprintln<w: writer, s: display>(w, s) {
+  w.wprint(s);
+  w.wprint("\n");
+}
+
+trait display {
+  fn wprint<w: writer>(w, self);
+}
+
+impl display for str {
+  fn wprint<w: writer>(w, self)
+    do w.wwrite(self);
+}
+
+trait writer {
+  fn wwrite(self, str);
+}
+
+type str = [u8];
+
+struct file { fd }
+
+type fd = i32;
+
+impl writer for file {
+  fn wwrite(self, str)
+    do write(self.fd, str.ptr, str.size);
+}
+
+extern fn write(fd, cstr, size);
+
+type cstr = *u8;
+
+type size = u64;
+
+struct cargs { size, *cstr }
+
+extern fn system(cstr) i32;
+
+fn call(str) 
+  do system(str.ptr).void();
+
+fn void<t>(t) {}
+
+type path = cstr;
+
+type filemode = i32;
+
+let write_mode: filemode = 1;
+let create_mode: filemode = 64;
+let truncate_mode: filemode = 512;
+
+extern fn open(path, filemode) fd;
+
+fn create_file(path) file 
+  do open_file_with(path, write_mode | create_mode | truncate_mode);
+
+fn open_file_with(path, filemode) file {
+  let fd = open(path, filemode);
+  if fd == -1
+    do sys_error_opening_with(filemode, path)
+  else file { fd }
+}
+
+fn sys_error_opening_with<t>(filemode, cstr) t {
+  eprint("! error opening `");
+  eprint(cstr);
+  eprint("` with mode ");
+  eprint(filemode);
+  eprint(": ");
+  perror(0);
+  exit(1)
+}
+
+impl display for cstr {
+  fn wprint<w: writer>(w, self) 
+    do w.wprint(self.to_str());
+}
+
+impl display for i32 {
+  fn wprint<w: writer>(w, self) 
+    do if self == 0
+      do w.wprint("0")
+    else w.wprint(non_null(self));
+}
+
+impl display for non_null {
+  fn wprint<w: writer>(w, self)
+    do if self.i32 != 0 {
+      w.wprint(non_null(self.i32 / 10));
+      w.wprint((self.i32 % 10) as u8 + '0')
+    }
+}
+
+impl display for u8 {
+  fn wprint<w: writer>(w, self)
+    do w.wprint(self.& as &u8.to_str());
+}
+
+struct non_null {i32}
+
+fn non_null(i32) non_null
+  do non_null {i32}
+
+trait to_str {
+  fn to_str(self) str;
+}
+
+impl to_str for cstr {
+  fn to_str(self) str
+    do str {
+      ptr: self,
+      size: strlen(self)
+    }
+}
+
+impl to_str for &u8 {
+  fn to_str(self) str
+    do str { 
+      ptr: self as *u8,
+      size: 1
+    }
+}
+
+extern fn strlen(cstr) size;
+
+extern fn perror(cstr);
+
+extern fn close(fd) i32;
+
+extern fn exit<t>(i32) t;
+
+fn eprint<s: display>(s) 
+  do stderr.wprint(s);
+
+let stderr: file = file {fd: 2};

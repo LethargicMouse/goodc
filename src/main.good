@@ -1,0 +1,9 @@
+fn main() {
+  let out = create_file(".build/out.ssa".ptr);
+  gen_ir(out);
+}
+
+fn gen_ir(out: file) {
+  out.wprint("export function w $main() {\n@start\nret 0\n}");
+}
+
